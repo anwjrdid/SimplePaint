@@ -184,6 +184,7 @@
             picCanvas.Location = new Point(6, 3);
             picCanvas.Name = "picCanvas";
             picCanvas.Size = new Size(1205, 494);
+            picCanvas.SizeMode = PictureBoxSizeMode.AutoSize;
             picCanvas.TabIndex = 8;
             picCanvas.TabStop = false;
             // 
@@ -218,6 +219,7 @@
             ((System.ComponentModel.ISupportInitialize)trbLineWidth).EndInit();
             ((System.ComponentModel.ISupportInitialize)picCanvas).EndInit();
             panel1.ResumeLayout(false);
+            panel1.PerformLayout();
             ResumeLayout(false);
             PerformLayout();
         }
