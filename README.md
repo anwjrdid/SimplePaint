@@ -62,3 +62,23 @@
     사용한 코드: `pen.DashStyle = DashStyle.Dash;`
   - Rectangle 계산 함수를 통해 모든 방향에서 정상적으로 도형이 그려지도록 처리했다.
     사용한 코드: `Math.Min(), Math.Abs()`
+
+## 실행 화면 (과제3)
+
+- 과제3 코드의 실행 스크린샷과 구현 내용 설명
+  ![과제3 실행화면](img/과제3.png)
+
+- 과제 내용 (위 그림 참조)
+
+  - 그림을 이미지 파일로 저장하는 기능 구현
+  - 다양한 이미지 포맷 지원
+
+- 구현한 내용 (위 그림 참조)
+
+  - SaveFileDialog를 이용하여 사용자에게 저장 경로와 파일 형식을 선택하도록 했다.
+    사용한 코드: `if (sfd.ShowDialog() == DialogResult.OK)`
+  - 파일 확장자에 따라 ImageFormat을 분기 처리했다.
+    사용한 코드: `if (sfd.FileName.EndsWith(".jpg"))`
+  - canvasBitmap 객체를 그대로 저장하여 현재 화면과 동일한 결과를 출력하도록 구현했다.
+    사용한 코드: `canvasBitmap.Save(path, format);`
+  - PNG, JPG, BMP 형식을 모두 지원하도록 필터를 설정했다.
