@@ -21,17 +21,18 @@ namespace SimplePaint
         private Color currentColor = Color.Black;
         private int currentLineWidth = 2;
 
+        private float zoom = 1.0f;
+
         public Form1()
         {
             InitializeComponent();
 
-            // ===== 캔버스 초기화 =====
-            canvasBitmap = new Bitmap(picCanvas.Width, picCanvas.Height);
-            canvasGraphics = Graphics.FromImage(canvasBitmap);
-            canvasGraphics.Clear(Color.White);
-            picCanvas.Image = canvasBitmap;
+            InitCanvas();
 
-            // ===== 이벤트 연결 =====
+            picCanvas.Resize += PicCanvas_Resize;
+            picCanvas.MouseWheel += PicCanvas_MouseWheel;
+            picCanvas.Focus();
+
             cmbColor.SelectedIndexChanged += cmbColor_SelectedIndexChanged;
             cmbColor.SelectedIndex = 0;
 
@@ -44,20 +45,82 @@ namespace SimplePaint
             btnRectangle.Click += btnRectangle_Click;
             btnCircle.Click += btnCircle_Click;
 
+            btnSaveFile.Click += btnSaveFile_Click;
+            btnOpenFile.Click += btnOpenFile_Click;
+
             picCanvas.MouseDown += PicCanvas_MouseDown;
             picCanvas.MouseMove += PicCanvas_MouseMove;
             picCanvas.MouseUp += PicCanvas_MouseUp;
             picCanvas.Paint += PicCanvas_Paint;
-
-            // ?? 추가 (과제3)
-            btnSaveFile.Click += btnSaveFile_Click;
         }
 
-        // ===== 저장 기능 =====
+        private void InitCanvas()
+        {
+            canvasBitmap = new Bitmap(picCanvas.Width, picCanvas.Height);
+            canvasGraphics = Graphics.FromImage(canvasBitmap);
+            canvasGraphics.Clear(Color.White);
+        }
+
+        // Resize
+        private void PicCanvas_Resize(object sender, EventArgs e)
+        {
+            if (picCanvas.Width <= 0 || picCanvas.Height <= 0) return;
+
+            Bitmap newBitmap = new Bitmap(picCanvas.Width, picCanvas.Height);
+            Graphics g = Graphics.FromImage(newBitmap);
+            g.Clear(Color.White);
+
+            if (canvasBitmap != null)
+                g.DrawImage(canvasBitmap, 0, 0);
+
+            canvasBitmap = newBitmap;
+            canvasGraphics = Graphics.FromImage(canvasBitmap);
+
+            picCanvas.Invalidate();
+        }
+
+        // Zoom
+        private void PicCanvas_MouseWheel(object sender, MouseEventArgs e)
+        {
+            if (e.Delta > 0)
+                zoom *= 1.1f;
+            else
+                zoom /= 1.1f;
+
+            if (zoom < 0.2f) zoom = 0.2f;
+            if (zoom > 5f) zoom = 5f;
+
+            picCanvas.Invalidate();
+        }
+
+        // 좌표 보정
+        private Point GetScaledPoint(Point p)
+        {
+            return new Point((int)(p.X / zoom), (int)(p.Y / zoom));
+        }
+
+        // 파일 열기
+        private void btnOpenFile_Click(object sender, EventArgs e)
+        {
+            OpenFileDialog ofd = new OpenFileDialog();
+            ofd.Filter = "이미지 파일 (*.png;*.jpg;*.bmp)|*.png;*.jpg;*.bmp";
+
+            if (ofd.ShowDialog() == DialogResult.OK)
+            {
+                Image img = Image.FromFile(ofd.FileName);
+
+                canvasBitmap = new Bitmap(img);
+                canvasGraphics = Graphics.FromImage(canvasBitmap);
+
+                picCanvas.Invalidate();
+            }
+        }
+
+        // 저장
         private void btnSaveFile_Click(object sender, EventArgs e)
         {
             SaveFileDialog sfd = new SaveFileDialog();
-            sfd.Filter = "PNG 파일 (*.png)|*.png|JPG 파일 (*.jpg)|*.jpg|BMP 파일 (*.bmp)|*.bmp";
+            sfd.Filter = "PNG (*.png)|*.png|JPG (*.jpg)|*.jpg|BMP (*.bmp)|*.bmp";
 
             if (sfd.ShowDialog() == DialogResult.OK)
             {
@@ -69,23 +132,22 @@ namespace SimplePaint
                     format = ImageFormat.Bmp;
 
                 canvasBitmap.Save(sfd.FileName, format);
-
                 MessageBox.Show("저장 완료!");
             }
         }
 
-        // ===== 마우스 이벤트 =====
+        // 마우스
         private void PicCanvas_MouseDown(object sender, MouseEventArgs e)
         {
             isDrawing = true;
-            startPoint = e.Location;
+            startPoint = GetScaledPoint(e.Location);
         }
 
         private void PicCanvas_MouseMove(object sender, MouseEventArgs e)
         {
             if (!isDrawing) return;
 
-            endPoint = e.Location;
+            endPoint = GetScaledPoint(e.Location);
             picCanvas.Invalidate();
         }
 
@@ -94,7 +156,7 @@ namespace SimplePaint
             if (!isDrawing) return;
 
             isDrawing = false;
-            endPoint = e.Location;
+            endPoint = GetScaledPoint(e.Location);
 
             using (Pen pen = new Pen(currentColor, currentLineWidth))
             {
@@ -104,19 +166,25 @@ namespace SimplePaint
             picCanvas.Invalidate();
         }
 
-        // ===== 미리보기 =====
+        // Paint (?? 핵심)
         private void PicCanvas_Paint(object sender, PaintEventArgs e)
         {
-            if (!isDrawing) return;
+            e.Graphics.ScaleTransform(zoom, zoom);
 
-            using (Pen pen = new Pen(currentColor, currentLineWidth))
+            if (canvasBitmap != null)
+                e.Graphics.DrawImage(canvasBitmap, 0, 0);
+
+            if (isDrawing)
             {
-                pen.DashStyle = DashStyle.Dash;
-                DrawShape(e.Graphics, pen, startPoint, endPoint);
+                using (Pen pen = new Pen(currentColor, currentLineWidth))
+                {
+                    pen.DashStyle = DashStyle.Dash;
+                    DrawShape(e.Graphics, pen, startPoint, endPoint);
+                }
             }
         }
 
-        // ===== 도형 =====
+        // 도형
         private void DrawShape(Graphics g, Pen pen, Point p1, Point p2)
         {
             Rectangle rect = GetRectangle(p1, p2);
@@ -126,11 +194,9 @@ namespace SimplePaint
                 case ToolType.Line:
                     g.DrawLine(pen, p1, p2);
                     break;
-
                 case ToolType.Rectangle:
                     g.DrawRectangle(pen, rect);
                     break;
-
                 case ToolType.Circle:
                     g.DrawEllipse(pen, rect);
                     break;
@@ -147,7 +213,7 @@ namespace SimplePaint
             );
         }
 
-        // ===== UI 기능 =====
+        // UI
         private void btnLine_Click(object sender, EventArgs e)
         {
             currentTool = ToolType.Line;

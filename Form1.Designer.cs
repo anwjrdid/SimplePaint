@@ -178,10 +178,11 @@
             // 
             // picCanvas
             // 
+            picCanvas.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             picCanvas.BackColor = Color.White;
             picCanvas.Location = new Point(12, 163);
             picCanvas.Name = "picCanvas";
-            picCanvas.Size = new Size(769, 275);
+            picCanvas.Size = new Size(1214, 497);
             picCanvas.TabIndex = 8;
             picCanvas.TabStop = false;
             // 
@@ -190,7 +191,7 @@
             AutoScaleDimensions = new SizeF(9F, 20F);
             AutoScaleMode = AutoScaleMode.Font;
             BackColor = SystemColors.ActiveBorder;
-            ClientSize = new Size(793, 450);
+            ClientSize = new Size(1238, 672);
             Controls.Add(picCanvas);
             Controls.Add(btnOpenFile);
             Controls.Add(btnSaveFile);
