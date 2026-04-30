@@ -29,7 +29,6 @@ namespace SimplePaint
 
             InitCanvas();
 
-            picCanvas.Resize += PicCanvas_Resize;
             picCanvas.MouseWheel += PicCanvas_MouseWheel;
             picCanvas.Focus();
 
@@ -56,30 +55,14 @@ namespace SimplePaint
 
         private void InitCanvas()
         {
-            canvasBitmap = new Bitmap(picCanvas.Width, picCanvas.Height);
+            canvasBitmap = new Bitmap(800, 600); // 기본 캔버스 크기
             canvasGraphics = Graphics.FromImage(canvasBitmap);
             canvasGraphics.Clear(Color.White);
+
+            UpdateCanvasSize();
         }
 
-        // Resize
-        private void PicCanvas_Resize(object sender, EventArgs e)
-        {
-            if (picCanvas.Width <= 0 || picCanvas.Height <= 0) return;
-
-            Bitmap newBitmap = new Bitmap(picCanvas.Width, picCanvas.Height);
-            Graphics g = Graphics.FromImage(newBitmap);
-            g.Clear(Color.White);
-
-            if (canvasBitmap != null)
-                g.DrawImage(canvasBitmap, 0, 0);
-
-            canvasBitmap = newBitmap;
-            canvasGraphics = Graphics.FromImage(canvasBitmap);
-
-            picCanvas.Invalidate();
-        }
-
-        // Zoom
+        // ?? 줌
         private void PicCanvas_MouseWheel(object sender, MouseEventArgs e)
         {
             if (e.Delta > 0)
@@ -90,20 +73,36 @@ namespace SimplePaint
             if (zoom < 0.2f) zoom = 0.2f;
             if (zoom > 5f) zoom = 5f;
 
+            UpdateCanvasSize();
+        }
+
+        // ?? PictureBox 크기 변경 (핵심)
+        private void UpdateCanvasSize()
+        {
+            if (canvasBitmap == null) return;
+
+            picCanvas.Width = (int)(canvasBitmap.Width * zoom);
+            picCanvas.Height = (int)(canvasBitmap.Height * zoom);
+
             picCanvas.Invalidate();
         }
 
-        // 좌표 보정
-        private Point GetScaledPoint(Point p)
+        // 좌표 변환
+        private Point ToImage(Point p)
         {
             return new Point((int)(p.X / zoom), (int)(p.Y / zoom));
+        }
+
+        private Point ToScreen(Point p)
+        {
+            return new Point((int)(p.X * zoom), (int)(p.Y * zoom));
         }
 
         // 파일 열기
         private void btnOpenFile_Click(object sender, EventArgs e)
         {
             OpenFileDialog ofd = new OpenFileDialog();
-            ofd.Filter = "이미지 파일 (*.png;*.jpg;*.bmp)|*.png;*.jpg;*.bmp";
+            ofd.Filter = "이미지 (*.png;*.jpg;*.bmp)|*.png;*.jpg;*.bmp";
 
             if (ofd.ShowDialog() == DialogResult.OK)
             {
@@ -112,7 +111,8 @@ namespace SimplePaint
                 canvasBitmap = new Bitmap(img);
                 canvasGraphics = Graphics.FromImage(canvasBitmap);
 
-                picCanvas.Invalidate();
+                zoom = 1.0f;
+                UpdateCanvasSize();
             }
         }
 
@@ -126,10 +126,8 @@ namespace SimplePaint
             {
                 ImageFormat format = ImageFormat.Png;
 
-                if (sfd.FileName.EndsWith(".jpg"))
-                    format = ImageFormat.Jpeg;
-                else if (sfd.FileName.EndsWith(".bmp"))
-                    format = ImageFormat.Bmp;
+                if (sfd.FileName.EndsWith(".jpg")) format = ImageFormat.Jpeg;
+                else if (sfd.FileName.EndsWith(".bmp")) format = ImageFormat.Bmp;
 
                 canvasBitmap.Save(sfd.FileName, format);
                 MessageBox.Show("저장 완료!");
@@ -140,14 +138,14 @@ namespace SimplePaint
         private void PicCanvas_MouseDown(object sender, MouseEventArgs e)
         {
             isDrawing = true;
-            startPoint = GetScaledPoint(e.Location);
+            startPoint = ToImage(e.Location);
         }
 
         private void PicCanvas_MouseMove(object sender, MouseEventArgs e)
         {
             if (!isDrawing) return;
 
-            endPoint = GetScaledPoint(e.Location);
+            endPoint = ToImage(e.Location);
             picCanvas.Invalidate();
         }
 
@@ -156,7 +154,7 @@ namespace SimplePaint
             if (!isDrawing) return;
 
             isDrawing = false;
-            endPoint = GetScaledPoint(e.Location);
+            endPoint = ToImage(e.Location);
 
             using (Pen pen = new Pen(currentColor, currentLineWidth))
             {
@@ -166,20 +164,26 @@ namespace SimplePaint
             picCanvas.Invalidate();
         }
 
-        // Paint (?? 핵심)
+        // Paint
         private void PicCanvas_Paint(object sender, PaintEventArgs e)
         {
-            e.Graphics.ScaleTransform(zoom, zoom);
-
             if (canvasBitmap != null)
-                e.Graphics.DrawImage(canvasBitmap, 0, 0);
+            {
+                e.Graphics.DrawImage(canvasBitmap, 0, 0, picCanvas.Width, picCanvas.Height);
+            }
 
             if (isDrawing)
             {
                 using (Pen pen = new Pen(currentColor, currentLineWidth))
                 {
                     pen.DashStyle = DashStyle.Dash;
-                    DrawShape(e.Graphics, pen, startPoint, endPoint);
+
+                    DrawShape(
+                        e.Graphics,
+                        pen,
+                        ToScreen(startPoint),
+                        ToScreen(endPoint)
+                    );
                 }
             }
         }
@@ -187,7 +191,12 @@ namespace SimplePaint
         // 도형
         private void DrawShape(Graphics g, Pen pen, Point p1, Point p2)
         {
-            Rectangle rect = GetRectangle(p1, p2);
+            Rectangle rect = new Rectangle(
+                Math.Min(p1.X, p2.X),
+                Math.Min(p1.Y, p2.Y),
+                Math.Abs(p1.X - p2.X),
+                Math.Abs(p1.Y - p2.Y)
+            );
 
             switch (currentTool)
             {
@@ -201,16 +210,6 @@ namespace SimplePaint
                     g.DrawEllipse(pen, rect);
                     break;
             }
-        }
-
-        private Rectangle GetRectangle(Point p1, Point p2)
-        {
-            return new Rectangle(
-                Math.Min(p1.X, p2.X),
-                Math.Min(p1.Y, p2.Y),
-                Math.Abs(p1.X - p2.X),
-                Math.Abs(p1.Y - p2.Y)
-            );
         }
 
         // UI
@@ -237,7 +236,6 @@ namespace SimplePaint
                 case 1: currentColor = Color.Red; break;
                 case 2: currentColor = Color.Blue; break;
                 case 3: currentColor = Color.Green; break;
-                default: currentColor = Color.Black; break;
             }
         }
 
