@@ -178,6 +178,7 @@
             // 
             // picCanvas
             // 
+            picCanvas.BackColor = Color.White;
             picCanvas.Location = new Point(12, 163);
             picCanvas.Name = "picCanvas";
             picCanvas.Size = new Size(769, 275);
