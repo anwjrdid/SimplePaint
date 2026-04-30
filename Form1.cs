@@ -1,6 +1,7 @@
 using System;
 using System.Drawing;
 using System.Drawing.Drawing2D;
+using System.Drawing.Imaging;
 using System.Windows.Forms;
 
 namespace SimplePaint
@@ -47,6 +48,30 @@ namespace SimplePaint
             picCanvas.MouseMove += PicCanvas_MouseMove;
             picCanvas.MouseUp += PicCanvas_MouseUp;
             picCanvas.Paint += PicCanvas_Paint;
+
+            // ?? 추가 (과제3)
+            btnSaveFile.Click += btnSaveFile_Click;
+        }
+
+        // ===== 저장 기능 =====
+        private void btnSaveFile_Click(object sender, EventArgs e)
+        {
+            SaveFileDialog sfd = new SaveFileDialog();
+            sfd.Filter = "PNG 파일 (*.png)|*.png|JPG 파일 (*.jpg)|*.jpg|BMP 파일 (*.bmp)|*.bmp";
+
+            if (sfd.ShowDialog() == DialogResult.OK)
+            {
+                ImageFormat format = ImageFormat.Png;
+
+                if (sfd.FileName.EndsWith(".jpg"))
+                    format = ImageFormat.Jpeg;
+                else if (sfd.FileName.EndsWith(".bmp"))
+                    format = ImageFormat.Bmp;
+
+                canvasBitmap.Save(sfd.FileName, format);
+
+                MessageBox.Show("저장 완료!");
+            }
         }
 
         // ===== 마우스 이벤트 =====
@@ -61,7 +86,7 @@ namespace SimplePaint
             if (!isDrawing) return;
 
             endPoint = e.Location;
-            picCanvas.Invalidate(); // 미리보기 갱신
+            picCanvas.Invalidate();
         }
 
         private void PicCanvas_MouseUp(object sender, MouseEventArgs e)
@@ -79,19 +104,19 @@ namespace SimplePaint
             picCanvas.Invalidate();
         }
 
-        // ===== Paint (미리보기) =====
+        // ===== 미리보기 =====
         private void PicCanvas_Paint(object sender, PaintEventArgs e)
         {
             if (!isDrawing) return;
 
             using (Pen pen = new Pen(currentColor, currentLineWidth))
             {
-                pen.DashStyle = DashStyle.Dash; // 점선
+                pen.DashStyle = DashStyle.Dash;
                 DrawShape(e.Graphics, pen, startPoint, endPoint);
             }
         }
 
-        // ===== 도형 그리기 =====
+        // ===== 도형 =====
         private void DrawShape(Graphics g, Pen pen, Point p1, Point p2)
         {
             Rectangle rect = GetRectangle(p1, p2);
@@ -122,7 +147,7 @@ namespace SimplePaint
             );
         }
 
-        // ===== 도형 선택 =====
+        // ===== UI 기능 =====
         private void btnLine_Click(object sender, EventArgs e)
         {
             currentTool = ToolType.Line;
@@ -138,7 +163,6 @@ namespace SimplePaint
             currentTool = ToolType.Circle;
         }
 
-        // ===== 색상 =====
         private void cmbColor_SelectedIndexChanged(object sender, EventArgs e)
         {
             switch (cmbColor.SelectedIndex)
@@ -151,7 +175,6 @@ namespace SimplePaint
             }
         }
 
-        // ===== 선 두께 =====
         private void trbLineWidth_ValueChanged(object sender, EventArgs e)
         {
             currentLineWidth = trbLineWidth.Value;
